@@ -36,6 +36,43 @@ map<int,int> gen_map(const vector<vertex>& vertices){
     return m;
 }
 
+typedef array<int,2> coord_leg;
+template<int N>
+array< array<coord_leg,2>, N > compress_state(const state& s){
+    assert(N == s.edges.size());
+    array<array<coord_leg,2>,N> A;
+    for(int i = 0; i < N; ++i){
+        auto [a,b] = s.edges[i];
+        auto [ia, ib] = tie(s.m.at(a.id),s.m.at(b.id));
+        for(int k = 0; k < s.vertices[ia].size(); ++k)
+            if(s.vertices[ia][k].id == a.id)
+                A[i][0] = coord_leg({ia,k});
+        for(int k = 0; k < s.vertices[ib].size(); ++k)
+            if(s.vertices[ib][k].id == b.id)
+                A[i][1] = coord_leg({ib,k});
+    }
+    sort(A.begin(), A.end());
+    return A;
+}
+
+template<int N>
+void printout(const vector<state>& config)
+{
+    assert(N == config[0].edges.size());
+    vector< array<array<coord_leg,2>,N> > compressed_vec(config.size());
+    for(int i = 0; i < config.size(); ++i)
+        compressed_vec[i] = compress_state<N>(config[i]);
+    sort(compressed_vec.begin(), compressed_vec.end());
+    auto last = unique(compressed_vec.begin(), compressed_vec.end());
+    compressed_vec.erase(last, compressed_vec.end());
+
+    cout << compressed_vec.size() << endl;
+    for(int i = 0; i < compressed_vec.size(); ++i){
+        for(auto& e : compressed_vec[i])
+            cout << "(" << e[0][0] << e[0][1] << "," << e[1][0] << e[1][1] << ") ";
+        cout << endl;
+    }
+}
 
 
 bool operator<(const half_edge& lhs, const half_edge& rhs) { 
@@ -222,7 +259,9 @@ vector<state> wickonceallpermutations(const vector<state>& vs, const vector<tupl
     return configs;
 }
 
-void solve1(){
+
+
+void solve1(){ // general phi4
     vertex vertex1 = { {0,0,0}, {1,0,0}, {2,0,0}, {3,0,0} };
     vertex vertex2 = { {4,0,0}, {5,0,0}, {6,0,0}, {7,0,0} };
 
@@ -241,13 +280,33 @@ void solve1(){
     // cout << config << endl;
 
     config = wickonceallpermutations(config, all_allowed_pairings);
-    config = wickonceordered(config, all_allowed_pairings);
-    config = wickonceordered(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings);
     
-    cout << "sunset diagram for standard phi4 theory: " << config.size() << endl;
-    cout << "(4!)^2 / 6 == " << tgamma(5)*tgamma(5) / 6 << endl;
-}
+    printout<3>(config);
 
+    vector<array<array<coord_leg,2>,3>> mconfig(config.size());
+    transform(config.cbegin(), config.cend(), mconfig.begin(), [](const state& s){return compress_state<3>(s);});
+    sort(mconfig.begin(), mconfig.end());
+    auto last = unique(mconfig.begin(), mconfig.end());
+    mconfig.erase(last,mconfig.end());
+
+    // cout << "{"; cout.flush();
+    // for(auto& [a,b,c] : mconfig){
+    //     cout << "{UndirectedEdge[" << get<0>(a)+1 << "," << get<1>(a)+5 << "],";
+    //     cout <<  "UndirectedEdge[" << get<0>(b)+1 << "," << get<1>(b)+5 << "],";
+    //     cout <<  "UndirectedEdge[" << get<0>(c)+1 << "," << get<1>(c)+5 << "],";
+    //     cout <<  "UndirectedEdge[1,x],UndirectedEdge[2,x],UndirectedEdge[3,x],UndirectedEdge[4,x],";
+    //     cout <<  "UndirectedEdge[5,y],UndirectedEdge[6,y],UndirectedEdge[7,y],UndirectedEdge[8,y]},";
+    //     cout << endl;
+    // }
+    // cout << "}" << endl;
+
+    cout << "sunset diagram for standard phi4 theory: " << mconfig.size() << endl;
+    cout << "(4!)^2 / 6 == " << tgamma(5)*tgamma(5) / 6 << endl;
+
+
+}
 
 half_edge find_edge_pair(const half_edge& he, const state& s){
     for(auto& e : s.edges){
@@ -354,6 +413,8 @@ void solve2(){ // four boson correction, two loop (fermion loop)
         if(boson_diameter(s,3))
             modified_config.push_back(s);
     
+    printout<7>(modified_config);
+
     cout  << "four boson, two loop correction: " << modified_config.size() << endl;
     cout  << "                         6! / 2: " << tgamma(7)/2 << endl;
 }
@@ -392,25 +453,7 @@ bool pseudo_internal_loop(const state& s){
     auto& [c,d] = s.edges[1];
     return (a.type != c.type && b.type != d.type);
 }
-
-template<int N>
-array< array<int,2>, N > compress_state(const state& s){
-    assert(N == s.edges.size());
-    array<array<int,2>,N> A;
-    for(int i = 0; i < N; ++i){
-        auto& [a,b] = s.edges[i];
-        for(int k = 0; k < s.vertices[0].size(); ++k)
-            if(s.vertices[0][k].id == a.id)
-                A[i][0] = k;
-        for(int k = 0; k < s.vertices[1].size(); ++k)
-            if(s.vertices[1][k].id == b.id)
-                A[i][1] = k;
-    }
-    sort(A.begin(), A.end());
-    return A;
-}
-
-void solve3(){ //sunset diagram (modified phi4) part 1
+void solve3(){  // boson self energy, sunset diagram (modified phi4) part 1
     vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
     vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
 
@@ -421,22 +464,27 @@ void solve3(){ //sunset diagram (modified phi4) part 1
     config = wickonceallpermutations(config, all_allowed_pairings);
     config = wickonceallpermutations(config, all_allowed_pairings);
 
-    vector< array<array<int,2>,3> > modified_config;
+    vector< state > cv;
+    vector< array<array<coord_leg,2>,3> > modified_config;
     for(auto& s : config)
-        if(internal_loop(s))
+        if(internal_loop(s)){
+            cv.push_back(s);
             modified_config.push_back(compress_state<3>(s));
+        }
     
+    printout<3>(cv);
+
     sort(modified_config.begin(), modified_config.end());
     auto last = unique(modified_config.begin(), modified_config.end());
     modified_config.erase(last, modified_config.end());
 
     cout << "sunset diagram Part 1 --- Modified phi4: " << modified_config.size() << endl;
-    for(int i = 0; i < modified_config.size(); ++i){
-        auto& [x,y,z] = modified_config[i];
-        cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")  (" << z[0] << " ->- " << z[1] << ")" << endl;
-    }
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y,z] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")  (" << z[0] << " ->- " << z[1] << ")" << endl;
+    // }
 }
-void solve4(){ //sunset diagram (modified phi4) part 2
+void solve4(){  // boson self energy, sunset diagram (modified phi4) part 2
     vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
     vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
 
@@ -447,24 +495,27 @@ void solve4(){ //sunset diagram (modified phi4) part 2
     config = wickonceallpermutations(config, all_allowed_pairings);
     config = wickonceallpermutations(config, all_allowed_pairings);
 
-    // keep connected fermion loops
-    vector< array<array<int,2>,3> > modified_config;
+    vector< state > cv;
+    vector< array<array<coord_leg,2>,3> > modified_config;
     for(auto& s : config)
-        if(no_internal_loop(s))
+        if(no_internal_loop(s)){
+            cv.push_back(s);
             modified_config.push_back(compress_state<3>(s));
+        }
+    
+    printout<3>(cv);
 
     sort(modified_config.begin(), modified_config.end());
     auto last = unique(modified_config.begin(), modified_config.end());
     modified_config.erase(last, modified_config.end());
 
     cout << "sunset diagram Part 2 --- Modified phi4: " << modified_config.size() << endl;
-    for(int i = 0; i < modified_config.size(); ++i){
-        auto& [x,y,z] = modified_config[i];
-        cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")  (" << z[0] << " ->- " << z[1] << ")" << endl;
-    }
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y,z] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")  (" << z[0] << " ->- " << z[1] << ")" << endl;
+    // }
 }
-
-void solve5(){ // boson self energy, two loop (fermion loop)
+void solve5(){  // boson self energy, two loop (fermion loop)
     vector<half_edge> vertex1 = { {0,0,0}, {1,1,0}, {2,-1,0} };
     vector<half_edge> vertex2 = { {3,0,0}, {4,1,0}, {5,-1,0} };
     vector<half_edge> vertex3 = { {6,0,0}, {7,1,0}, {8,-1,0} };
@@ -482,7 +533,7 @@ void solve5(){ // boson self energy, two loop (fermion loop)
     config = wickonceordered(config, fermion_pairings_only);
     config = wickonceordered(config, fermion_pairings_only);
     
-    // keep connected fermion loops
+
     vector<state> modified_config;
     for(auto& s : config)
         if(connected(s))
@@ -497,10 +548,12 @@ void solve5(){ // boson self energy, two loop (fermion loop)
         if(boson_diameter(s,2))
             modified_config.push_back(s);
     
+    printout<5>(modified_config);
+
     cout  << "boson self energy, two loop (fermion loop): " << modified_config.size() << endl;
     cout  << "symmetry factor is then (1/4!) * " << modified_config.size() << " == " << modified_config.size()/double(tgamma(5)) << endl;
 }
-void solve6(){ // one loop boson self energy
+void solve6(){  // one loop boson self energy
     vector<half_edge> vertex1 = { {0,0,0}, {1,1,0}, {2,-1,0} };
     vector<half_edge> vertex2 = { {3,0,0}, {4,1,0}, {5,-1,0} };
 
@@ -514,11 +567,13 @@ void solve6(){ // one loop boson self energy
     config = wickonceordered(config, fermion_pairings_only);
     config = wickonceallpermutations(config, boson_pairings_only);
     
+    printout<2>(config);
+
     cout << "one loop boson self energy: " << config.size() << endl;
     cout << "symmetry factor: (1/2!) * " << config.size() << " = " << config.size()/2.0 << endl;
 }
 
-void solve7(){ // four boson correction, one fermion loop
+void solve7(){  // four boson correction, one fermion loop
     vector<half_edge> vertex1 = { {0,0,0}, {1,1,0}, {2,-1,0} };
     vector<half_edge> vertex2 = { {3,0,0}, {4,1,0}, {5,-1,0} };
     vector<half_edge> vertex3 = { {6,0,0}, {7,1,0}, {8,-1,0} };
@@ -542,11 +597,12 @@ void solve7(){ // four boson correction, one fermion loop
         if(connected(s))
             modified_config.push_back(s);
     
+    printout<4>(config);
+
     cout  << "four boson correction, one fermion loop: " << modified_config.size() << endl;
     cout  << "                                 4! / 4: " << tgamma(5)/4 << endl;
 }
-
-void solve8(){ // four boson correction, one boson loop (modified phi4) part 1
+void solve8(){  // four boson correction, one boson loop (modified phi4) part 1
     vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
     vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
 
@@ -556,23 +612,28 @@ void solve8(){ // four boson correction, one boson loop (modified phi4) part 1
     config = wickonceallpermutations(config, all_allowed_pairings);
     config = wickonceallpermutations(config, all_allowed_pairings);
 
-    // keep connected fermion loops
-    vector< array<array<int,2>,2> > modified_config;
+    vector<state> cv;
+    vector< array<array<coord_leg,2>,2> > modified_config;
     for(auto& s : config)
-        if(internal_loop(s))
+        if(internal_loop(s)){
+            cv.push_back(s);
             modified_config.push_back(compress_state<2>(s));
+        }
+    
+    printout<2>(cv);
+
 
     sort(modified_config.begin(), modified_config.end());
     auto last = unique(modified_config.begin(), modified_config.end());
     modified_config.erase(last, modified_config.end());
 
     cout << "four boson correction, one boson loop part 1 --- Modified phi4: " << modified_config.size() << endl;
-    for(int i = 0; i < modified_config.size(); ++i){
-        auto& [x,y] = modified_config[i];
-        cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
-    }
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
+    // }
 }
-void solve9(){ // four boson correction, one boson loop (modified phi4) part 2
+void solve9(){  // four boson correction, one boson loop (modified phi4) part 2
     vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
     vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
 
@@ -582,21 +643,25 @@ void solve9(){ // four boson correction, one boson loop (modified phi4) part 2
     config = wickonceallpermutations(config, all_allowed_pairings);
     config = wickonceallpermutations(config, all_allowed_pairings);
 
-    // keep connected fermion loops
-    vector< array<array<int,2>,2> > modified_config;
+    vector<state> cv;
+    vector< array<array<coord_leg,2>,2> > modified_config;
     for(auto& s : config)
-        if(half_internal_loop(s))
+        if(half_internal_loop(s)){
+            cv.push_back(s);
             modified_config.push_back(compress_state<2>(s));
+        }
+    
+    printout<2>(cv);
 
     sort(modified_config.begin(), modified_config.end());
     auto last = unique(modified_config.begin(), modified_config.end());
     modified_config.erase(last, modified_config.end());
 
     cout << "four boson correction, one boson loop part 2 --- Modified phi4: " << modified_config.size() << endl;
-    for(int i = 0; i < modified_config.size(); ++i){
-        auto& [x,y] = modified_config[i];
-        cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
-    }
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
+    // }
 
 }
 void solve10(){ // four boson correction, one boson loop (modified phi4) part 3
@@ -609,21 +674,25 @@ void solve10(){ // four boson correction, one boson loop (modified phi4) part 3
     config = wickonceallpermutations(config, all_allowed_pairings);
     config = wickonceallpermutations(config, all_allowed_pairings);
 
-    // keep connected fermion loops
-    vector< array<array<int,2>,2> > modified_config;
+    vector<state> cv;
+    vector< array<array<coord_leg,2>,2> > modified_config;
     for(auto& s : config)
-        if(pseudo_internal_loop(s))
+        if(pseudo_internal_loop(s)){
+            cv.push_back(s);
             modified_config.push_back(compress_state<2>(s));
+        }
+
+    printout<2>(cv);
 
     sort(modified_config.begin(), modified_config.end());
     auto last = unique(modified_config.begin(), modified_config.end());
     modified_config.erase(last, modified_config.end());
 
     cout << "four boson correction, one boson loop part 3 --- Modified phi4: " << modified_config.size() << endl;
-    for(int i = 0; i < modified_config.size(); ++i){
-        auto& [x,y] = modified_config[i];
-        cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
-    }
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
+    // }
 
 }
 
@@ -657,30 +726,58 @@ void solve11(){ // yukawa
         if(vis[0] == 2 && vis[1] == 2 && vis[2] == 2)
             modified_config.push_back(s);
     }
+
+    printout<3>(modified_config);
         
     cout  << "yukawa: " << 3*modified_config.size() << endl;
     cout  << "    3!: " << tgamma(4) << endl;
 }
 
+void solve12(){  // one loop fermion self energy
+    vector<half_edge> vertex1 = { {0,0,0}, {1,1,0}, {2,-1,0} };
+    vector<half_edge> vertex2 = { {3,0,0}, {4,1,0}, {5,-1,0} };
+
+    vector<vertex> vertices_init = {vertex1,vertex2};
+    vector<state> config = {  {  vertices_init, vector<edge>(), gen_map(vertices_init)  } };
+
+    vector<tuple<int,int>> all_allowed_pairings  = { {0,0}, {1,-1}, {-1,1} };
+    vector<tuple<int,int>> fermion_pairings_only = { {1,-1}, {-1,1} };
+    vector<tuple<int,int>> boson_pairings_only   = { {0,0} };
+
+    config = wickonceallpermutations(config, fermion_pairings_only);
+    config = wickonceallpermutations(config, boson_pairings_only);
+    
+    printout<2>(config);
+
+    cout << "one loop fermion self energy: " << config.size() << endl;
+    cout << "overall factor: (1/2!) * " << config.size() << " = " << config.size()/2.0 << endl;
+}
+
+
+
 int main()
 {
-    solve1(); // standard phi4 sunset diagram
-
-    // solve2();
-
-    // solve3(); // two loop boson self energy [boson loop] Part 1
-    // solve4(); // two loop boson self energy [boson loop] Part 2
-
-    // solve5(); // two loop boson self energy [fermion loop]
-    // solve6(); // one loop boson self energy
+    // BOSON SELF ENERGY
+    // solve3();  // two loop boson self energy [boson loop] Part 1
+    // solve4();  // two loop boson self energy [boson loop] Part 2
+    // solve5();  // two loop boson self energy [fermion loop]
+    // solve6();  // one loop boson self energy
     
-    // solve7();
+    // BOSON SELF ENERGY CHECK
+    // solve1(); // standard phi4 sunset diagram
+    
+    // FERMION SELF ENERGY
+    // solve12(); // one loop fermion self energy
 
-    // solve8();
-    // solve9();
-    // solve10();
+    // FOUR BOSON
+    // solve2();  // four boson, two loop fermion loop
+    // solve7();  // four boson, fermion loop
+    solve8();  // four boson, boson loop part 1
+    solve9();  // four boson, boson loop part 2
+    solve10(); // four boson, boson loop part 3
 
-    // solve11();
+    // YUKAWA
+    // solve11(); // yukawa
 
     return 0;
 }
