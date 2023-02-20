@@ -11,3 +11,12 @@ Useful utilities:
 - user can control of which particles can be contracted by allowing to specify different "types" of a particle
 - implemented functionality: ordered wick contractions
 - implemented functionality: all wick contractions
+
+### Numerical Integration Checks
+
+In this sub-project there are utilities to numerically check the computation of
+analytic expressions of various integrals. As an examples I provide a two-dimensional
+integration that verifies the integration of 
+$ \pi \int_0^1 dx \int_0^{1-x} \frac{2}{A} + \frac{c^2(1-v^2)(1-x-y)}{A^{3/2}} $. 
+
+
