@@ -17,6 +17,8 @@ Useful utilities:
 In this sub-project there are utilities to numerically check the computation of
 analytic expressions of various integrals. As an examples I provide a two-dimensional
 integration that verifies the integration of 
-$ \pi \int_0^1 dx \int_0^{1-x} \frac{2}{A} + \frac{c^2(1-v^2)(1-x-y)}{A^{3/2}} $. 
+$\pi \int_0^1 dx \int_0^{1-x} \frac{2}{A} + \frac{c^2(1-v^2)(1-x-y)}{A^{3/2}}$
+where
+$A = 4v^2xy + c^4(1-x-y)^2 + c^2(1+v^2)(1-x-y)(x+y)$. 
 
 
