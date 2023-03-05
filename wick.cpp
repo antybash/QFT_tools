@@ -768,6 +768,39 @@ bool triangle_plus_bubble(const state& s){
     }
     return vis[0] && vis[1] && vis[2];
 }
+void solve13(){ // four boson, two boson loop, three vertex
+    vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
+    vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
+    vertex vertex3 = { {8,1,0}, {9,1,0}, {10,2,0}, {11,2,0} };
+
+    vector<state> config = {  {  {vertex1, vertex2, vertex3}, vector<edge>(), gen_map({vertex1,vertex2,vertex3})  } };
+    vector<tuple<int,int>> all_allowed_pairings  = { {1,1}, {1,2}, {2,1}, {2,2} };
+    
+    config = wickonceallpermutations(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings);
+
+    vector<state> cv;
+    vector< array<array<coord_leg,2>,4> > modified_config;
+    for(auto& s : config)
+        if(pseudo_internal_loop(s)){
+            cv.push_back(s);
+            modified_config.push_back(compress_state<4>(s));
+        }
+
+    printout<4>(cv);
+
+    sort(modified_config.begin(), modified_config.end());
+    auto last = unique(modified_config.begin(), modified_config.end());
+    modified_config.erase(last, modified_config.end());
+
+    cout << "four boson correction, two boson loop, three vertex: " << modified_config.size() << endl;
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
+    // }
+}
 
 int main()
 {
@@ -786,9 +819,11 @@ int main()
     // FOUR BOSON
     // solve2();  // four boson, two loop fermion loop
     // solve7();  // four boson, fermion loop
-    solve8();  // four boson, boson loop part 1
-    solve9();  // four boson, boson loop part 2
-    solve10(); // four boson, boson loop part 3
+    // solve8();  // four boson, boson loop part 1
+    // solve9();  // four boson, boson loop part 2
+    // solve10(); // four boson, boson loop part 3
+    solve13(); // four boson, two boson loop, three vertex
+    
 
     // YUKAWA
     // solve11(); // yukawa
