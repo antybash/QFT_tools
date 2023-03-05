@@ -3,10 +3,11 @@
 using namespace std;
 
 struct half_edge { int id; int type; bool paired; };
-
 typedef vector<half_edge> vertex;
 typedef tuple<half_edge,half_edge> edge;
 struct state { vector<vertex> vertices; vector<edge> edges; map<int,int> m; };
+    // index = m[ vertex_id ];
+    // assert(vertices[index].id == vertex_id);
 
 bool contract_compatible(const int& type1, const vector<tuple<int,int>>& allowed_type_pairs)
 {
@@ -754,6 +755,11 @@ void solve12(){  // one loop fermion self energy
 }
 
 
+bool triangle_plus_bubble(const state& s){
+    assert(s.edges.size() == 4);             // ;; ensures four edges 
+    // vx1 needs to be connected to vx2 and vx3 ;; 
+    // vx2 needs to be connected to vx3         ;; last two lines ensure triangle
+}
 
 int main()
 {
