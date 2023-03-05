@@ -754,11 +754,19 @@ void solve12(){  // one loop fermion self energy
     cout << "overall factor: (1/2!) * " << config.size() << " = " << config.size()/2.0 << endl;
 }
 
-
 bool triangle_plus_bubble(const state& s){
     assert(s.edges.size() == 4);             // ;; ensures four edges 
-    // vx1 needs to be connected to vx2 and vx3 ;; 
+    // vx1 needs to be connected to vx2,vx3     ;; 
     // vx2 needs to be connected to vx3         ;; last two lines ensure triangle
+    vector<bool> vis(3,false);
+    for(auto& [x,y] : s.edges){
+        vector<int> indices_of_edges = { s.m[x.id], s.m[y.id] };
+        sort(indices_of_edges.begin(), indices_of_edges.end());
+        vis[0] |= (indices_of_edges[0] == 0 && indices_of_edges[1] == 1);
+        vis[1] |= (indices_of_edges[0] == 0 && indices_of_edges[1] == 2);
+        vis[2] |= (indices_of_edges[0] == 1 && indices_of_edges[1] == 2);
+    }
+    return vis[0] && vis[1] && vis[2];
 }
 
 int main()
