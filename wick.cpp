@@ -754,19 +754,55 @@ void solve12(){  // one loop fermion self energy
     cout << "overall factor: (1/2!) * " << config.size() << " = " << config.size()/2.0 << endl;
 }
 
-bool triangle_plus_bubble(const state& s){
+bool triangle_plus_bubble_generic(const state& s){
     assert(s.edges.size() == 4);             // ;; ensures four edges 
     // vx1 needs to be connected to vx2,vx3     ;; 
     // vx2 needs to be connected to vx3         ;; last two lines ensure triangle
     vector<bool> vis(3,false);
     for(auto& [x,y] : s.edges){
-        vector<int> indices_of_edges = { s.m[x.id], s.m[y.id] };
+        vector<int> indices_of_edges = { s.m.at(x.id), s.m.at(y.id) };
         sort(indices_of_edges.begin(), indices_of_edges.end());
-        vis[0] |= (indices_of_edges[0] == 0 && indices_of_edges[1] == 1);
-        vis[1] |= (indices_of_edges[0] == 0 && indices_of_edges[1] == 2);
-        vis[2] |= (indices_of_edges[0] == 1 && indices_of_edges[1] == 2);
+        vis[0] = vis[0] || (indices_of_edges[0] == 0 && indices_of_edges[1] == 1);
+        vis[1] = vis[1] || (indices_of_edges[0] == 0 && indices_of_edges[1] == 2);
+        vis[2] = vis[2] || (indices_of_edges[0] == 1 && indices_of_edges[1] == 2);
     }
     return vis[0] && vis[1] && vis[2];
+}
+bool triangle_plus_bubble_pseudoloop(const state& s){
+    if(!triangle_plus_bubble_generic(s))
+        return false;
+    set<int> found_id;
+
+    // bfs to find all half-edges (by id) that are connected to the external half-edges
+    queue<half_edge> q;
+    for(auto& x : s.vertices)
+        for(auto& he : x)
+            if(!he.paired){
+                q.push(he);
+                found_id.insert(he.id);
+            }
+    while(!q.empty()){
+        auto  he_cur = q.front();
+        auto& vx_cur = s.vertices[ s.m.at(he_cur.id) ];
+        q.pop();
+        for(auto& he : vx_cur)
+            if(he.id != he_cur.id && he.type == he_cur.type && found_id.find( he.id ) == found_id.end() )
+                q.push( he );
+        for(auto& [he1,he2]  : s.edges){
+            if(he1.id == he_cur.id && found_id.find( he2.id ) == found_id.end()){
+                found_id.insert(he2.id);
+                q.push(he2);
+            }
+            if(he2.id == he_cur.id && found_id.find( he1.id ) == found_id.end())
+                found_id.insert(he1.id);
+                q.push(he1);
+        }
+    }
+    for(auto& vx : s.vertices)
+        for(auto& he : vx)
+            if(found_id.find(he.id) == found_id.end())
+                return true;
+    return false;
 }
 void solve13(){ // four boson, two boson loop, three vertex
     vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
@@ -776,26 +812,40 @@ void solve13(){ // four boson, two boson loop, three vertex
     vector<state> config = {  {  {vertex1, vertex2, vertex3}, vector<edge>(), gen_map({vertex1,vertex2,vertex3})  } };
     vector<tuple<int,int>> all_allowed_pairings  = { {1,1}, {1,2}, {2,1}, {2,2} };
     
-    config = wickonceallpermutations(config, all_allowed_pairings);
-    config = wickonceallpermutations(config, all_allowed_pairings);
-    config = wickonceallpermutations(config, all_allowed_pairings);
-    config = wickonceallpermutations(config, all_allowed_pairings);
+    config = wickonceallpermutations(config, all_allowed_pairings); cout << "done wick 1: config.size() == " << config.size() << endl;
+    config = wickonceallpermutations(config, all_allowed_pairings); cout << "done wick 2: config.size() == " << config.size() << endl;
+    config = wickonceallpermutations(config, all_allowed_pairings); cout << "done wick 3: config.size() == " << config.size() << endl;
+    config = wickonceallpermutations(config, all_allowed_pairings); cout << "done wick 4: config.size() == " << config.size() << endl;
 
     vector<state> cv;
-    vector< array<array<coord_leg,2>,4> > modified_config;
+    // vector< array<array<coord_leg,2>,4> > modified_config;
+    vector< array<array<coord_leg,2>,4> > modconfig1;
+    vector< array<array<coord_leg,2>,4> > modconfig2;
     for(auto& s : config)
-        if(pseudo_internal_loop(s)){
+        if(triangle_plus_bubble_generic(s)){
             cv.push_back(s);
-            modified_config.push_back(compress_state<4>(s));
+            if(triangle_plus_bubble_pseudoloop(s))
+                modconfig1.push_back(compress_state<4>(s));
+            else
+                modconfig2.push_back(compress_state<4>(s));
         }
 
-    printout<4>(cv);
+    // printout<4>(cv);
 
-    sort(modified_config.begin(), modified_config.end());
-    auto last = unique(modified_config.begin(), modified_config.end());
-    modified_config.erase(last, modified_config.end());
+    // sort(modified_config.begin(), modified_config.end());
+    // auto last = unique(modified_config.begin(), modified_config.end());
+    // modified_config.erase(last, modified_config.end());
+    sort(modconfig1.begin(), modconfig1.end());
+    sort(modconfig2.begin(), modconfig2.end());
 
-    cout << "four boson correction, two boson loop, three vertex: " << modified_config.size() << endl;
+    auto last1 = unique(modconfig1.begin(), modconfig1.end());
+    auto last2 = unique(modconfig2.begin(), modconfig2.end());
+    
+    modconfig1.erase(last1, modconfig1.end());
+    modconfig2.erase(last2, modconfig2.end());
+
+    cout << "four boson correction, two boson loop, three vertex (WITH pseudoloop): " << modconfig1.size() << endl;
+    cout << "four boson correction, two boson loop, three vertex ( W/O pseudoloop): " << modconfig2.size() << endl;
     // for(int i = 0; i < modified_config.size(); ++i){
     //     auto& [x,y] = modified_config[i];
     //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
