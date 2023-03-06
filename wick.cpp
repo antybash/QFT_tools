@@ -755,6 +755,7 @@ void solve12(){  // one loop fermion self energy
 }
 
 bool triangle_plus_bubble_generic(const state& s){
+    // cout << "examining: " << s << endl;
     assert(s.edges.size() == 4);             // ;; ensures four edges 
     // vx1 needs to be connected to vx2,vx3     ;; 
     // vx2 needs to be connected to vx3         ;; last two lines ensure triangle
@@ -782,20 +783,32 @@ bool triangle_plus_bubble_pseudoloop(const state& s){
                 found_id.insert(he.id);
             }
     while(!q.empty()){
+        // cout << q.size() << " ";
+        // cout << q.front() << endl;
         auto  he_cur = q.front();
         auto& vx_cur = s.vertices[ s.m.at(he_cur.id) ];
         q.pop();
         for(auto& he : vx_cur)
-            if(he.id != he_cur.id && he.type == he_cur.type && found_id.find( he.id ) == found_id.end() )
+            if(he.id != he_cur.id && he.type == he_cur.type && found_id.find( he.id ) == found_id.end() ){
+                found_id.insert(he.id);
                 q.push( he );
+                // cout << "\tone" << endl;
+            }
         for(auto& [he1,he2]  : s.edges){
             if(he1.id == he_cur.id && found_id.find( he2.id ) == found_id.end()){
                 found_id.insert(he2.id);
                 q.push(he2);
+                // cout << "\ttwo" << endl;
             }
-            if(he2.id == he_cur.id && found_id.find( he1.id ) == found_id.end())
+            if(he2.id == he_cur.id && found_id.find( he1.id ) == found_id.end()){
+                // cout << ( found_id.find(he1.id) == found_id.end() ? "not found " : "found " ) << he1.id << endl;
                 found_id.insert(he1.id);
                 q.push(he1);
+                // cout << "\tthree" << he1.id << endl;
+                // for(auto& tmp : found_id)
+                //     cout << tmp << " ";
+                // cout << endl;
+            }
         }
     }
     for(auto& vx : s.vertices)
@@ -821,6 +834,7 @@ void solve13(){ // four boson, two boson loop, three vertex
     // vector< array<array<coord_leg,2>,4> > modified_config;
     vector< array<array<coord_leg,2>,4> > modconfig1;
     vector< array<array<coord_leg,2>,4> > modconfig2;
+
     for(auto& s : config)
         if(triangle_plus_bubble_generic(s)){
             cv.push_back(s);
@@ -852,6 +866,91 @@ void solve13(){ // four boson, two boson loop, three vertex
     // }
 }
 
+int count_twolooploops(const state& s){
+    assert(s.vertices.size() == 3);
+    vector<int> num_busy_half_edges(3,0);
+    for(int i = 0; i < 3; ++i)
+        for(auto& he : s.vertices[i])
+            num_busy_half_edges[i] += (he.paired ? 1 : 0);
+    sort(num_busy_half_edges.begin(), num_busy_half_edges.end());
+    bool ok = true;
+    ok = ok && num_busy_half_edges[0] == 2;
+    ok = ok && num_busy_half_edges[1] == 2;
+    ok = ok && num_busy_half_edges[2] == 4;
+    if(!ok)
+        return -1;
+    
+    int numSG = 0;
+    auto [e1,e2,e3,e4] = tie(s.edges[0], s.edges[1], s.edges[2], s.edges[3]);
+    assert(s.m.at(get<0>(e1).id) == s.m.at(get<0>(e2).id));
+    assert(s.m.at(get<0>(e1).id) == s.m.at(get<0>(e3).id));
+    assert(s.m.at(get<0>(e1).id) == s.m.at(get<0>(e4).id));
+
+    numSG += (get<1>(e1).type == get<1>(e2).type ? 1 : 0);
+    numSG += (get<1>(e3).type == get<1>(e4).type ? 1 : 0);
+    return numSG;
+}
+void solve14(){
+/* Example
+*                           --------              --------
+*             |            |        |            |        |            |
+*             |  -- -- --  |        |  -- -- --  |        |  -- -- --  |
+*             |            |        |            |        |            |
+*                           --------              --------
+*/
+    vertex vertex1 = { {0,1,0}, {1,1,0}, {2,2,0}, {3,2,0} };
+    vertex vertex2 = { {4,1,0}, {5,1,0}, {6,2,0}, {7,2,0} };
+    vertex vertex3 = { {8,1,0}, {9,1,0}, {10,2,0}, {11,2,0} };
+
+    vector<state> config = {  {  {vertex1, vertex2, vertex3}, vector<edge>(), gen_map({vertex1,vertex2,vertex3})  } };
+    vector<tuple<int,int>> all_allowed_pairings  = { {1,1}, {1,2}, {2,1}, {2,2} };
+    
+    config = wickonceordered(config, all_allowed_pairings); cout << "done wick 1: config.size() == " << config.size() << endl;
+    config = wickonceordered(config, all_allowed_pairings); cout << "done wick 2: config.size() == " << config.size() << endl;
+    config = wickonceordered(config, all_allowed_pairings); cout << "done wick 3: config.size() == " << config.size() << endl;
+    config = wickonceordered(config, all_allowed_pairings); cout << "done wick 4: config.size() == " << config.size() << endl;
+
+    vector<state> cv;
+    // vector< array<array<coord_leg,2>,4> > modified_config;
+    vector< array<array<coord_leg,2>,4> > modconfig0;
+    vector< array<array<coord_leg,2>,4> > modconfig1;
+    vector< array<array<coord_leg,2>,4> > modconfig2;
+
+    for(auto& s : config){
+        int numSG = count_twolooploops(s);
+        if(numSG >= 0){
+            cv.push_back(s);
+            if(numSG == 0)
+                modconfig0.push_back(compress_state<4>(s));
+            if(numSG == 1)
+                modconfig1.push_back(compress_state<4>(s));
+            else
+                modconfig2.push_back(compress_state<4>(s));
+        }
+    }
+    sort(modconfig0.begin(), modconfig0.end());
+    sort(modconfig1.begin(), modconfig1.end());
+    sort(modconfig2.begin(), modconfig2.end());
+
+    auto last0 = unique(modconfig0.begin(), modconfig0.end());
+    auto last1 = unique(modconfig1.begin(), modconfig1.end());
+    auto last2 = unique(modconfig2.begin(), modconfig2.end());
+    
+    modconfig0.erase(last0, modconfig0.end());
+    modconfig1.erase(last1, modconfig1.end());
+    modconfig2.erase(last2, modconfig2.end());
+
+    // additional factor of 3 because we can choose either one of the three vertices
+    // to be the "central" one with all four half-edges being paired
+    cout << "four boson correction, two boson loop, three vertex (SG^0): " << 3*modconfig0.size() << endl;
+    cout << "four boson correction, two boson loop, three vertex (SG^1): " << 3*modconfig1.size() << endl;
+    cout << "four boson correction, two boson loop, three vertex (SG^2): " << 3*modconfig2.size() << endl;
+    // for(int i = 0; i < modified_config.size(); ++i){
+    //     auto& [x,y] = modified_config[i];
+    //     cout << "(" << x[0] << " ->- " << x[1] << ")  (" << y[0] << " ->- " << y[1] << ")" << endl;
+    // }
+}
+
 int main()
 {
     // BOSON SELF ENERGY
@@ -873,7 +972,7 @@ int main()
     // solve9();  // four boson, boson loop part 2
     // solve10(); // four boson, boson loop part 3
     solve13(); // four boson, two boson loop, three vertex
-    
+    // solve14(); // four boson, two boson loop, three vertex (the simple one)
 
     // YUKAWA
     // solve11(); // yukawa
